@@ -2,8 +2,18 @@
 #include<stdlib.h>
 #include<ctype.h>
 #include<string.h>
-//
+
 #define DISK_SIZE 1024*1440
+
+#pragma pack (1) /*指定按1字节对齐*/
+
+//define integer length and type
+typedef unsigned char u8;   //1字节
+typedef unsigned short u16; //2字节
+typedef unsigned int u32;   //4字节
+typedef unsigned long u64;  //8字节
+
+
 
 
 
@@ -12,6 +22,9 @@ char buf[DISK_SIZE];
 void my_print(char* str,int color);
 void print_path(char* str);
 int main(){
+
+
+
 
   // test print function
   char s[]="moriturus te saluto\n";
@@ -25,7 +38,7 @@ int main(){
   fgets(buf,DISK_SIZE,f);
 
   // handle user input
-  char input[30];
+ char input[30];
   while(1){
     scanf("%s",&input);
     print_path(input);
