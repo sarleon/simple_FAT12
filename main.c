@@ -51,13 +51,13 @@ struct root_entry{
 struct virtual_dir{
     char dir;
     char name[13];
-    struct virtual_dir* childrens[20];   
+    struct virtual_dir* childrens[64];   
 };
 
 struct virtual_file{
     char dir;
     char name[13];
-    char content[4096];
+    char content[512];
 };
 
 
@@ -88,9 +88,7 @@ int main(){
 
   // read boot sector
   memcpy(&bpb,&buf,sizeof(bpb));
-  printf("%d\n",bpb.sector_per_track); 
-  printf("%d\n",bpb.bytes_per_sector); 
-  printf("%d\n",bpb.root_entry_count);
+  
   
   
   
@@ -106,11 +104,13 @@ int main(){
   char* current_entry_pointer=buf+9728; 
   char namebuf[12];
   struct virtual_dir *root = malloc(sizeof(struct virtual_dir));  
+  root->dir=1;
+  strcpy(root->name,"root");
   struct root_entry *entry=malloc(sizeof(struct root_entry));
   for(int i=0;i<entry_count ; i++){
 
 
-      if(!isalnum(buf[current_entry_head]) || islower(buf[current_entry_head])){
+      if(!isalnum(buf[current_entry_head]) || islower(buf[current_entry_head]) || buf[current_entry_head]=='A'){
           current_entry_head+=entry_size;
           current_entry_pointer+=32;
           continue;
@@ -120,29 +120,37 @@ int main(){
       memcpy(entry ,current_entry_pointer ,entry_size);      
       memcpy(namebuf,entry->filename,8);
       int index= find_LF_index(namebuf, 8);
-      namebuf[index]='.';
-      memcpy(namebuf+index+1,entry->extension,3);
-      namebuf[index+4]=0;
+      if(entry->attributes & (uint_8)0x10){
+          namebuf[index]=0;
+      } else{
+          namebuf[index]='.';
+          memcpy(namebuf+index+1,entry->extension,3);
+          namebuf[index+4]=0;
+      }
+          
+      
+
+
       //printf("%x",find_cluster_head_offset(entry->first_logic_cluster));
-      printf("%s\n",namebuf);
+      //printf("%s\n",namebuf);
       uint_8 is_dir = entry->attributes & (uint_8)0x10;
 
-
+      
       if(is_dir){
-          
+          my_print("is dir",1);
           struct virtual_dir *dir = malloc(sizeof(struct virtual_dir));
           dir->dir=1;
           root->childrens[i]=dir;
 
-          strcpy(dir->name,namebuf);
+          memcpy(dir->name,namebuf,13);
           recursive_find_file(dir,entry,find_cluster_head_offset(entry->first_logic_cluster));
-
-      } else {
           
+      }else {
+          my_print("is file",1);
           struct virtual_file *file = malloc(sizeof(struct virtual_file));
           file->dir=0;
           root->childrens[i]=file;
-          strcpy(file->name,namebuf);
+          memcpy(file->name,namebuf,13);
           memcpy(file->content,&buf[find_cluster_head_offset(entry->first_logic_cluster)],512);
           
           
@@ -152,6 +160,7 @@ int main(){
       current_entry_pointer+=32;
   }  
 
+  
   print_dir(root,"");
   
   // user input
@@ -163,10 +172,10 @@ int main(){
     
   }
 
-
   return 0;
+  };
 
-}
+
 
 
 //test com plete
@@ -200,7 +209,7 @@ void read_boot_sector(){
 }
 
 void recursive_find_file(struct virtual_dir* current_dir,struct root_entry* cuurent_entry,int sector_head){
-    printf("%x",sector_head);
+  
   int root_dir_head = 19 * 512;//byte
   int entry_size = 32; //byte
   int root_dir_size = 14 * 512;
@@ -210,12 +219,12 @@ void recursive_find_file(struct virtual_dir* current_dir,struct root_entry* cuur
   char namebuf[12];
 
   char* current_entry_pointer=buf+sector_head;
-  struct virtual_dir *root = malloc(sizeof(struct virtual_dir));  
-  struct root_entry *entry=malloc(sizeof(struct root_entry));
+  struct virtual_dir *root = calloc(sizeof(struct virtual_dir),1);  
+  struct root_entry *entry=calloc(sizeof(struct root_entry),1);
   for(int i=0;i<entry_count ; i++){
 
        
-      if(!isalnum(buf[current_entry_head]) || islower(buf[current_entry_head])){
+      if(!isalnum(buf[current_entry_head]) || islower(buf[current_entry_head]) || buf[current_entry_head]=='A'){
           current_entry_head+=entry_size;
           current_entry_pointer+=32;
           continue;
@@ -225,32 +234,35 @@ void recursive_find_file(struct virtual_dir* current_dir,struct root_entry* cuur
       memcpy(namebuf,entry->filename,8);
       int index= find_LF_index(namebuf, 8);
       
-      namebuf[index]='.';
-      memcpy(namebuf+index+1,entry->extension,3);
-      namebuf[index+4]=0;
+      if(entry->attributes & (uint_8)0x10){
+          namebuf[index]=0;
+      } else{
+          namebuf[index]='.';
+          memcpy(namebuf+index+1,entry->extension,3);
+          namebuf[index+4]=0;
+      }
       
       
-
-
-      printf("%s\n",namebuf);
+      
+      //printf("%s\n",namebuf);
       uint_8 is_dir = entry->attributes & (uint_8)0x10;
-      printf("%d\n",is_dir);
+      
       
       if(is_dir){
           
-          struct virtual_dir *dir = malloc(sizeof(struct virtual_dir));
+          struct virtual_dir *dir = calloc(sizeof(struct virtual_dir),1);
           dir->dir=1;
           current_dir->childrens[i]=dir;
-          strcpy(dir->name,namebuf);
+          memcpy(dir->name,namebuf,13);
 
           recursive_find_file(dir,entry,find_cluster_head_offset(entry->first_logic_cluster));
 
       } else {
           
-          struct virtual_file *file = malloc(sizeof(struct virtual_file));
+          struct virtual_file *file = calloc(sizeof(struct virtual_file),1);
           file->dir=0;
           current_dir->childrens[i]=file;
-          strcpy(file->name,namebuf);
+          memcpy(file->name,namebuf,13);
           memcpy(file->content,&buf[find_cluster_head_offset(entry->first_logic_cluster)],512);          
       }
       
@@ -269,23 +281,42 @@ int find_LF_index(char* s,int l){
 }
 
 void print_dir(struct virtual_dir* dir,char *prefix){
+    my_print("invoking:",1);
+    my_print(dir->name,1);
     char *cur_prefix = calloc(100,1);
     char *cur_filename= calloc(100,1);
     char *slash = calloc(2,1);
     slash[0]='/';
-    cur_prefix=strcat(cur_prefix,slash);
-    cur_prefix=strcat(cur_prefix,dir->name);
-    for(int i=0 ; i<20 ;i++){
+    slash[1]=0;
+
+    strcat(cur_prefix,dir->name);
+    strcat(cur_prefix,slash);
+    for(int i=0 ; i<64 ;i++){
+ 
+
         if(dir->childrens[i]==NULL){
-            break;
+            continue;
         }
-        if(dir->dir=0){
-            cur_filename=strcat(cur_prefix,dir->childrens[i]->name);
-            print_path(cur_filename);
-        } else {
+
+       
+        if(dir->childrens[i]->dir){
+            my_print("dir:\n",1);
             print_dir(dir->childrens[i], cur_prefix);
+        } else {
+            my_print("file:\n",1);
+            strcpy(cur_filename,cur_prefix);
+            strcat(cur_filename,dir->childrens[i]->name);
+            print_path(cur_filename);
         }
-        print_dir(dir,cur_prefix);
+        
+        if(dir->dir!=0){
+            //file
+   
+    
+        } else {
+
+        }
+
     }
     
 }
