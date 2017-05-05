@@ -57,8 +57,20 @@ struct virtual_dir{
 struct virtual_file{
     char dir;
     char name[13];
-    char content[512];
+    char content[4096];
 };
+
+struct dir_map{
+    char fullname[100];
+    struct virtual_dir* dir;
+}map[30]={
+    {"",NULL},{"",NULL},{"",NULL,},{"",NULL},{"",NULL},{"",NULL},{"",NULL,},{"",NULL},{"",NULL},{"",NULL},{"",NULL,},{"",NULL},{"",NULL},{"",NULL},{"",NULL,},{"",NULL},{"",NULL},{"",NULL},{"",NULL,},{"",NULL},
+    {"",NULL},{"",NULL},{"",NULL},{"",NULL,},{"",NULL},{"",NULL},{"",NULL},{"",NULL},{"",NULL,},{"",NULL}
+    
+};
+
+int dir_map_index = 0;
+
 
 
 
@@ -69,7 +81,7 @@ void recursive_find_file(struct virtual_dir* current_dir,struct root_entry *cure
 uint_32 find_cluster_head_offset(int cluster_number);
 void my_print(char* str,int color);
 void print_path(char* str);
-void print_dir(struct virtual_dir* dir,char* prefix);
+void print_dir(struct virtual_dir* dir,char* prefix,int store);
 void read_boot_sector();
 int main(){
 
@@ -105,7 +117,7 @@ int main(){
   char namebuf[12];
   struct virtual_dir *root = malloc(sizeof(struct virtual_dir));  
   root->dir=1;
-  strcpy(root->name,"root");
+  strcpy(root->name,"");
   struct root_entry *entry=malloc(sizeof(struct root_entry));
   for(int i=0;i<entry_count ; i++){
 
@@ -137,7 +149,7 @@ int main(){
 
       
       if(is_dir){
-          my_print("is dir",1);
+
           struct virtual_dir *dir = malloc(sizeof(struct virtual_dir));
           dir->dir=1;
           root->childrens[i]=dir;
@@ -146,7 +158,7 @@ int main(){
           recursive_find_file(dir,entry,find_cluster_head_offset(entry->first_logic_cluster));
           
       }else {
-          my_print("is file",1);
+
           struct virtual_file *file = malloc(sizeof(struct virtual_file));
           file->dir=0;
           root->childrens[i]=file;
@@ -164,10 +176,35 @@ int main(){
   print_dir(root,"");
   
   // user input
-  char input[30];
+  char input[30]={0};
   while(1){
     scanf("%s",&input);
-    print_path(input);
+
+    
+
+    if(input[0]=='c'&&input[1]=='o'&&input[2]=='u'&&input[3]=='n'&&input[4]=='t'){
+        printf("count!");
+    } else {
+        for(int i=0;i<dir_map_index;i++){
+            if(strcmp(input,map[i].fullname)==0){
+                if(map[i].dir->dir==1){
+
+                    
+                    print_dir(map[i].dir,"/");
+                            
+                } else {
+                    my_print((struct virtual_file*)map[i].dir->childrens, 1);
+                }
+
+                break;
+            }
+            
+            if(i==29)
+                my_print("unknown path",1);
+            
+        }
+        
+    }
 
     
   }
@@ -280,15 +317,20 @@ int find_LF_index(char* s,int l){
     return l-1;
 }
 
-void print_dir(struct virtual_dir* dir,char *prefix){
-    my_print("invoking:",1);
-    my_print(dir->name,1);
+void print_dir(struct virtual_dir* dir,char *prefix,int store){
+    
     char *cur_prefix = calloc(100,1);
     char *cur_filename= calloc(100,1);
     char *slash = calloc(2,1);
+    
+    
     slash[0]='/';
+    
+    
+    
+    
     slash[1]=0;
-
+    strcat(cur_prefix,prefix);
     strcat(cur_prefix,dir->name);
     strcat(cur_prefix,slash);
     for(int i=0 ; i<64 ;i++){
@@ -297,25 +339,23 @@ void print_dir(struct virtual_dir* dir,char *prefix){
         if(dir->childrens[i]==NULL){
             continue;
         }
-
-       
+        
+        
         if(dir->childrens[i]->dir){
-            my_print("dir:\n",1);
+            strcpy(cur_filename,cur_prefix);
+            strcat(cur_filename,dir->childrens[i]->name);
             print_dir(dir->childrens[i], cur_prefix);
         } else {
-            my_print("file:\n",1);
+
             strcpy(cur_filename,cur_prefix);
             strcat(cur_filename,dir->childrens[i]->name);
             print_path(cur_filename);
         }
         
-        if(dir->dir!=0){
-            //file
-   
-    
-        } else {
+        strcpy(map[dir_map_index].fullname, cur_filename);
+        map[dir_map_index].dir = dir->childrens[i];
+        dir_map_index++;
 
-        }
 
     }
     
