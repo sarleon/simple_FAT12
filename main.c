@@ -83,6 +83,7 @@ void my_print(char* str,int color);
 void print_path(char* str);
 void print_dir(struct virtual_dir* dir,char* prefix,int store);
 void read_boot_sector();
+void count_dir(struct virtual_dir* dir,int depth);
 int main(){
 
     
@@ -173,24 +174,36 @@ int main(){
   }  
 
   
-  print_dir(root,"");
+  print_dir(root,"",1);
   
   // user input
   char input[30]={0};
   while(1){
-    scanf("%s",&input);
-
-    
-
+      gets(input);
+      //    scanf("%s",&input);
     if(input[0]=='c'&&input[1]=='o'&&input[2]=='u'&&input[3]=='n'&&input[4]=='t'){
-        printf("count!");
+        for(int i=0;i<dir_map_index;i++){
+            if(strcmp(input+6,map[i].fullname)==0){
+                if(map[i].dir->dir==1){
+                    count_dir(map[i].dir,0);
+                } else {
+                    my_print("not a directory", 1);
+                }
+
+                break;
+            }
+            
+            if(i==29)
+                my_print("unknown path",1);
+            
+        }
     } else {
         for(int i=0;i<dir_map_index;i++){
             if(strcmp(input,map[i].fullname)==0){
                 if(map[i].dir->dir==1){
 
                     
-                    print_dir(map[i].dir,"/");
+                    print_dir(map[i].dir,"/",0);
                             
                 } else {
                     my_print((struct virtual_file*)map[i].dir->childrens, 1);
@@ -217,21 +230,23 @@ int main(){
 
 //test com plete
 void print_path(char* str){
-  char *e;
-  int index;
+    char temp[100];
+    strcpy(temp,str);
+    char *e;
+    int index;
 
-  e = strrchr(str, '/');
-  if(e==NULL){
-    my_print(str,0);
-    my_print("\n",0);
-  } else{
-    index = (int)(e - str);
-    char buf[12];
-    strcpy(buf,e);
-    e[1]=0;
-    my_print(str,0);
-    my_print(buf+1,1);
-    my_print("\n",1);
+    e = strrchr(temp, '/');
+    if(e==NULL){
+        my_print(temp,0);
+        my_print("\n",0);
+    } else{
+        index = (int)(e - temp);
+        char buffer[12];
+        strcpy(buffer,e);
+        e[1]=0;
+        my_print(temp,0);
+        my_print(buffer+1,1);
+        my_print("\n",1);
   }
 
 }
@@ -342,21 +357,66 @@ void print_dir(struct virtual_dir* dir,char *prefix,int store){
         
         
         if(dir->childrens[i]->dir){
+
+            // is dir
             strcpy(cur_filename,cur_prefix);
             strcat(cur_filename,dir->childrens[i]->name);
-            print_dir(dir->childrens[i], cur_prefix);
+            print_dir(dir->childrens[i], cur_prefix,store);
         } else {
 
+            // is file
             strcpy(cur_filename,cur_prefix);
             strcat(cur_filename,dir->childrens[i]->name);
+
             print_path(cur_filename);
+
+
         }
-        
-        strcpy(map[dir_map_index].fullname, cur_filename);
-        map[dir_map_index].dir = dir->childrens[i];
-        dir_map_index++;
+        if(store==1){
+                        
+            strcpy(map[dir_map_index].fullname, cur_filename);
+            map[dir_map_index].dir = dir->childrens[i];
+            dir_map_index++;
+        }
+      
+
 
 
     }
     
 }
+
+void count_dir(struct virtual_dir* dir,int depth){
+    
+    char output[100]={0};
+    int output_index =0;
+
+    for(int i=0;i<depth*4;i++){
+        output[output_index]=' ';
+        output_index++;
+    }
+    strcat(output,dir->name);
+    output_index = strlen(output);
+    strcat(output,": 0 files , 0 directories\n");
+    
+    
+    
+    int dir_count=0;
+    int file_count=0;
+    for(int i=0 ; i<64 ;i++){
+        if(dir->childrens[i]==NULL){
+            continue;
+        }
+        
+        if(dir->childrens[i]->dir){
+            dir_count++;
+            // is dir
+            count_dir(dir->childrens[i], depth+1);
+        } else {
+            file_count++;
+            // is file
+        }
+    }
+    output[output_index+2]+=file_count;
+    output[output_index+12]+=dir_count;
+    my_print(output,1);}
